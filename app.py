@@ -1,457 +1,174 @@
-# app.py
-import io
-import re
-from datetime import datetime
-import math
+ import streamlit as st
 import pandas as pd
 import numpy as np
-import streamlit as st
-import matplotlib.pyplot as plt
-from PIL import Image
 
-# optional IsolationForest
-try:
-    from sklearn.ensemble import IsolationForest
-    SKLEARN_AVAILABLE = True
-except Exception:
-    SKLEARN_AVAILABLE = False
+# =========================
+# Page Config
+# =========================
+st.set_page_config(page_title="AI Financial Suite", layout="wide")
 
-# ---------- Page config ----------
-st.set_page_config(page_title="AI Financial Suite", layout="wide", initial_sidebar_state="expanded")
-
-# ---------- Global styling (match requested header + IT Troubleshooting look) ----------
+# =========================
+# Custom CSS for Styling
+# =========================
 st.markdown(
     """
     <style>
-    /* Full app dark background */
-    .reportview-container, .main, header, .stApp {
-        background-color: #071024; /* very dark navy */
-        color: #e6eef8;
-    }
-
-    /* Card style */
-    .card {
-        background: #071229;
-        padding: 18px;
-        border-radius: 12px;
-        margin-bottom: 18px;
-        border: 1px solid rgba(255,255,255,0.03);
-        box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-    }
-
-    /* header matching your screenshot */
-    .dashboard-header {
-        text-align: center;
-        padding: 36px 10px;
-        border-radius: 8px;
-        background: transparent;
-        margin-bottom: 8px;
-    }
-    .dashboard-title {
-        color: #40bfff; /* cyan, similar to example */
-        font-weight: 900;
-        font-size: 48px;
-        margin: 0;
-        line-height: 1;
-        letter-spacing: 0.5px;
-        text-shadow: 0 2px 6px rgba(0,0,0,0.6);
-    }
-    .dashboard-sub {
-        color: #f5c542; /* gold/amber */
-        font-weight: 700;
-        font-size: 26px;
-        margin: 8px 0 0 0;
-        line-height: 1.1;
-    }
-    .header-divider {
-        height: 2px;
-        background-color: rgba(255,255,255,0.04);
-        margin: 22px auto 20px auto;
-        width: 90%;
-    }
-
-    /* Agent headings */
-    .agent-title { font-size:22px; font-weight:800; color:#93c5fd; margin-bottom:4px; }
-    .agent-sub { font-size:14px; color:#fbcfe8; margin-bottom:10px; }
-
-    /* Inputs & buttons */
-    .stButton>button { background-image: linear-gradient(90deg,#06b6d4,#7c3aed); color:white; font-weight:700; border-radius:8px; }
-    .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
-        background-color:#051226; color:#e6eef8; border-radius:6px; padding:8px;
-    }
-
-    /* Dataframe text color */
-    .stDataFrame th { color: #e6eef8; }
-    .stDataFrame td { color: #e6eef8; }
-
-    /* Small muted helper text */
-    .small-muted { color:#9ca3af; font-size:12px; }
+        .main {
+            background-color: #0e1117;
+            color: white;
+        }
+        h1 {
+            color: #00BFFF;
+            font-weight: bold;
+            text-align: center;
+        }
+        h2, h3 {
+            color: #FFD700;
+            text-align: center;
+        }
+        .stButton>button {
+            background-color: #00BFFF;
+            color: white;
+            font-weight: bold;
+            border-radius: 10px;
+            padding: 0.6em 1.2em;
+        }
+        .stDownloadButton>button {
+            background-color: #32CD32;
+            color: white;
+            font-weight: bold;
+            border-radius: 10px;
+            padding: 0.6em 1.2em;
+        }
     </style>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
-# ---------- Header: match the screenshot exactly ----------
-try:
-    logo = Image.open("logo.png")
-    st.image(logo, width=90)
-except Exception:
-    # safe fallback, no crash
-    pass
+# =========================
+# Dashboard Header
+# =========================
+st.markdown("<h1>AI Financial Suite</h1>", unsafe_allow_html=True)
+st.markdown("<h2>Your 4-in-1 AI Assistant for Smarter Workflows</h2>", unsafe_allow_html=True)
+st.markdown("---")
 
-st.markdown(
-    """
-    <div class="dashboard-header">
-      <div style="height:16px"></div>
-      <h1 class="dashboard-title">AI Business Operations Suite</h1>
-      <h2 class="dashboard-sub">Your 4-in-1 AI Assistant for Smarter Workflows</h2>
-      <div class="header-divider"></div>
-    </div>
-    """,
-    unsafe_allow_html=True,
+# =========================
+# Sidebar Navigation
+# =========================
+st.sidebar.title("📊 Financial Tools")
+menu = st.sidebar.radio(
+    "Choose a module:",
+    ["Accounts Reconciliation", "Cash Flow Forecasting", "Invoice Processing", "Expense Categorization"]
 )
 
-# ---------- Sidebar ----------
-st.sidebar.title("📌 Navigation")
-st.sidebar.markdown("Select an agent to begin")
-agent = st.sidebar.selectbox(
-    "Agents",
-    [
-        "Accounts Reconciliation",
-        "Cash Flow Forecasting",
-        "Invoice Processor",
-        "Expense Categorization"
-    ],
-)
-st.sidebar.markdown("---")
-st.sidebar.info("Upload CSV/XLSX files or paste data. This is a demo — secure production data appropriately.")
+# =========================
+# 1. Accounts Reconciliation
+# =========================
+if menu == "Accounts Reconciliation":
+    st.subheader("Accounts Reconciliation")
+    st.write("Upload two CSV files (Bank Statement & Internal Records) to reconcile transactions.")
 
-# ---------- Helpers ----------
-def df_to_csv_bytes(df: pd.DataFrame) -> bytes:
-    return df.to_csv(index=False).encode("utf-8")
+    bank_file = st.file_uploader("Upload Bank Statement", type=["csv"], key="bank")
+    internal_file = st.file_uploader("Upload Internal Records", type=["csv"], key="internal")
 
-def read_text_file(uploaded):
-    try:
-        return uploaded.getvalue().decode("utf-8")
-    except Exception:
-        return None
+    if bank_file and internal_file:
+        bank_df = pd.read_csv(bank_file)
+        internal_df = pd.read_csv(internal_file)
 
-def read_csv_or_excel(u):
-    # accepts UploadFile or path-like
-    if hasattr(u, "read"):
-        name = getattr(u, "name", "")
-        if name.lower().endswith(".csv"):
-            return pd.read_csv(u)
-        else:
-            return pd.read_excel(u)
-    else:
-        if str(u).lower().endswith(".csv"):
-            return pd.read_csv(u)
-        else:
-            return pd.read_excel(u)
+        st.write("### Bank Statement")
+        st.dataframe(bank_df)
 
-# ---------- Agent: Accounts Reconciliation ----------
-if agent == "Accounts Reconciliation":
-    st.markdown('<div class="agent-title">🧾 Accounts Reconciliation</div>', unsafe_allow_html=True)
-    st.markdown('<div class="agent-sub">Upload bank statement and ledger; auto-match amounts and flag mismatches.</div>', unsafe_allow_html=True)
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
+        st.write("### Internal Records")
+        st.dataframe(internal_df)
 
-    st.markdown("Upload two files: 1) Bank statement (Date, Description, Amount). 2) Ledger/Books (Date, Description, Amount).")
-    bank_file = st.file_uploader("Upload Bank Statement (CSV/XLSX)", type=["csv","xlsx"], key="bank_rec_bank")
-    ledger_file = st.file_uploader("Upload Ledger (CSV/XLSX)", type=["csv","xlsx"], key="bank_rec_ledger")
+        unmatched = pd.concat([bank_df, internal_df]).drop_duplicates(keep=False)
 
-    if bank_file and ledger_file:
-        try:
-            bank_df = read_csv_or_excel(bank_file)
-            ledger_df = read_csv_or_excel(ledger_file)
-        except Exception as e:
-            st.error(f"Could not read files: {e}")
-            bank_df = ledger_df = None
+        st.write("### 🔎 Unmatched Transactions")
+        st.dataframe(unmatched)
 
-        if bank_df is not None and ledger_df is not None:
-            st.subheader("Preview")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.write("Bank (sample)")
-                st.dataframe(bank_df.head())
-            with c2:
-                st.write("Ledger (sample)")
-                st.dataframe(ledger_df.head())
+        st.download_button("⬇️ Download Unmatched Records", unmatched.to_csv(index=False).encode("utf-8"), "unmatched.csv")
 
-            def find_amount_col(df):
-                for c in df.columns:
-                    if c.lower() in ('amount','amt','value','transaction_amount','debit','credit'):
-                        return c
-                for c in df.columns:
-                    if pd.api.types.is_numeric_dtype(df[c]):
-                        return c
-                return None
+# =========================
+# 2. Cash Flow Forecasting
+# =========================
+elif menu == "Cash Flow Forecasting":
+    st.subheader("Cash Flow Forecasting")
+    st.write("Upload past transactions to forecast cash flow for the next 6 months.")
 
-            bank_amt_guess = find_amount_col(bank_df)
-            ledger_amt_guess = find_amount_col(ledger_df)
+    file = st.file_uploader("Upload Transactions CSV", type=["csv"], key="cashflow")
 
-            st.markdown("### Settings")
-            bank_amt_col = st.selectbox("Bank amount column", options=["-- none --"] + list(bank_df.columns), index=1 if bank_amt_guess else 0)
-            ledger_amt_col = st.selectbox("Ledger amount column", options=["-- none --"] + list(ledger_df.columns), index=1 if ledger_amt_guess else 0)
-            tolerance = st.number_input("Amount tolerance (absolute) for fuzzy matches", min_value=0.0, value=0.01, step=0.01)
+    if file:
+        df = pd.read_csv(file)
 
-            if st.button("Run Reconciliation"):
-                try:
-                    b = bank_df.copy().reset_index().rename(columns={'index': 'bank_idx'})
-                    l = ledger_df.copy().reset_index().rename(columns={'index': 'ledger_idx'})
+        st.write("### Uploaded Data")
+        st.dataframe(df)
 
-                    if bank_amt_col == "-- none --" or ledger_amt_col == "-- none --":
-                        st.error("Please select amount columns for both files.")
-                    else:
-                        b['__amt'] = pd.to_numeric(b[bank_amt_col], errors='coerce').round(2)
-                        l['__amt'] = pd.to_numeric(l[ledger_amt_col], errors='coerce').round(2)
+        if "Amount" in df.columns:
+            monthly_cashflow = df.groupby(df.index // 30)["Amount"].sum()
+            forecast = monthly_cashflow.rolling(3).mean().shift(1).fillna(method="bfill")
 
-                        merged = pd.merge(b, l, on='__amt', how='left', suffixes=('_bank','_ledger'), indicator=True)
-                        direct_matched = merged[merged['_merge']=='both']
-                        unmatched_bank = merged[merged['_merge']=='left_only']
+            st.write("### 📈 6-Month Forecast")
+            forecast_df = pd.DataFrame({
+                "Month": np.arange(1, len(forecast) + 1),
+                "Forecasted Cash Flow": forecast.values
+            })
+            st.dataframe(forecast_df)
 
-                        tolerant_matches = []
-                        if not unmatched_bank.empty:
-                            for _, row in unmatched_bank.iterrows():
-                                amt = row['__amt']
-                                candidates = l[ (l['__amt'].notna()) & (l['__amt'].sub(amt).abs() <= tolerance) ]
-                                if not candidates.empty:
-                                    cand = candidates.iloc[0]
-                                    tolerant_matches.append({
-                                        'bank_idx': row['bank_idx'],
-                                        'bank_amount': amt,
-                                        'ledger_idx': int(cand['ledger_idx']),
-                                        'ledger_amount': float(cand['__amt'])
-                                    })
+            st.download_button("⬇️ Download Forecast", forecast_df.to_csv(index=False).encode("utf-8"), "cashflow_forecast.csv")
 
-                        st.markdown("### Results")
-                        st.write(f"Direct matches: {len(direct_matched)}")
-                        st.write(f"Unmatched bank rows: {len(unmatched_bank)}")
-                        if tolerant_matches:
-                            st.write(f"Fuzzy matches found: {len(tolerant_matches)} (within tolerance)")
-                            st.dataframe(pd.DataFrame(tolerant_matches))
-                        st.markdown("Unmatched bank sample")
-                        st.dataframe(unmatched_bank.head(50))
-                        st.download_button("Download unmatched bank rows (CSV)", data=df_to_csv_bytes(unmatched_bank), file_name="unmatched_bank_rows.csv", mime="text/csv")
-                        st.success("Reconciliation finished. Review unmatched rows and fuzzy matches.")
-                except Exception as e:
-                    st.error(f"Reconciliation failed: {e}")
-    else:
-        st.info("Upload both bank statement and ledger to run reconciliation.")
-    st.markdown("</div>", unsafe_allow_html=True)
+# =========================
+# 3. Invoice Processing
+# =========================
+elif menu == "Invoice Processing":
+    st.subheader("Invoice Processing")
+    st.write("Upload invoices CSV file to extract and organize payment details.")
 
-# ---------- Agent: Cash Flow Forecasting ----------
-elif agent == "Cash Flow Forecasting":
-    st.markdown('<div class="agent-title">🔮 Cash Flow Forecasting</div>', unsafe_allow_html=True)
-    st.markdown('<div class="agent-sub">Upload historical transactions to forecast future cash flow using moving average + trend.</div>', unsafe_allow_html=True)
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
+    file = st.file_uploader("Upload Invoices CSV", type=["csv"], key="invoice")
 
-    uploaded = st.file_uploader("Upload transactions CSV/XLSX (Date, Revenue, Expenses)", type=["csv","xlsx"], key="cf_forecast_upload")
-    paste = st.text_area("Or paste CSV text here (optional)", height=180)
-    horizon = st.number_input("Forecast horizon (months)", min_value=1, max_value=36, value=6)
+    if file:
+        invoices = pd.read_csv(file)
+        st.write("### Uploaded Invoices")
+        st.dataframe(invoices)
 
-    df = None
-    if uploaded is not None:
-        try:
-            df = read_csv_or_excel(uploaded)
-        except Exception as e:
-            st.error(f"Could not read file: {e}")
-    elif paste.strip():
-        try:
-            df = pd.read_csv(io.StringIO(paste))
-        except Exception as e:
-            st.error(f"Could not parse pasted CSV: {e}")
+        if {"Invoice ID", "Amount", "Status"}.issubset(invoices.columns):
+            pending = invoices[invoices["Status"].str.lower() == "pending"]
 
-    if df is not None:
-        st.subheader("Preview")
-        st.dataframe(df.head(8))
-        cols_lower = [c.lower() for c in df.columns]
-        date_col = next((c for c in df.columns if c.lower() in ['date','transaction_date','txn_date','timestamp']), None)
-        rev_col = next((c for c in df.columns if c.lower() in ['revenue','income','sales','credit','amount_credit']), None)
-        exp_col = next((c for c in df.columns if c.lower() in ['expenses','expense','costs','debit','amount_debit']), None)
+            st.write("### ⏳ Pending Invoices")
+            st.dataframe(pending)
 
-        if not date_col or (not rev_col and not exp_col):
-            st.error("Couldn't detect Date and Revenue/Expenses columns. Ensure your CSV includes them.")
-        else:
-            try:
-                df['__date'] = pd.to_datetime(df[date_col], errors='coerce')
-            except Exception:
-                df['__date'] = pd.to_datetime(df[date_col], errors='coerce')
+            st.download_button("⬇️ Download Pending Invoices", pending.to_csv(index=False).encode("utf-8"), "pending_invoices.csv")
 
-            df['__rev'] = pd.to_numeric(df[rev_col], errors='coerce').fillna(0) if rev_col else 0.0
-            df['__exp'] = pd.to_numeric(df[exp_col], errors='coerce').fillna(0) if exp_col else 0.0
-            df = df.dropna(subset=['__date'])
-            df = df.set_index('__date')
-            monthly = df.resample('M')[['__rev','__exp']].sum()
-            monthly['net'] = monthly['__rev'] - monthly['__exp']
-            st.markdown("### Historical (monthly)")
-            st.dataframe(monthly.tail(12))
+# =========================
+# 4. Expense Categorization
+# =========================
+elif menu == "Expense Categorization":
+    st.subheader("Expense Categorization")
+    st.write("Upload expenses CSV file and categorize spending.")
 
-            window = 3
-            monthly['net_ma'] = monthly['net'].rolling(window=window, min_periods=1).mean()
-            last_ma = monthly['net_ma'].iloc[-1] if not monthly['net_ma'].empty else 0.0
+    file = st.file_uploader("Upload Expenses CSV", type=["csv"], key="expenses")
 
-            x = np.arange(len(monthly))
-            y = monthly['net_ma'].fillna(0).values
-            forecast_values = []
-            if len(x) > 1 and np.std(y) > 0:
-                coeff = np.polyfit(x, y, 1)
-                slope = coeff[0]; intercept = coeff[1]
-                for i in range(1, int(horizon)+1):
-                    forecast_values.append(intercept + slope*(len(x)-1+i))
-            else:
-                forecast_values = [last_ma]*int(horizon)
+    if file:
+        expenses = pd.read_csv(file)
+        st.write("### Uploaded Expenses")
+        st.dataframe(expenses)
 
-            future_idx = pd.date_range(start=monthly.index[-1] + pd.offsets.MonthBegin(1), periods=int(horizon), freq='M')
-            forecast_df = pd.DataFrame({'forecast_net': forecast_values}, index=future_idx)
+        if "Description" in expenses.columns and "Amount" in expenses.columns:
+            def categorize(desc):
+                desc = desc.lower()
+                if "rent" in desc or "lease" in desc:
+                    return "Housing"
+                elif "salary" in desc or "wages" in desc:
+                    return "Payroll"
+                elif "utility" in desc or "electricity" in desc:
+                    return "Utilities"
+                elif "travel" in desc or "flight" in desc:
+                    return "Travel"
+                else:
+                    return "Miscellaneous"
 
-            st.markdown("### Forecast (net cash)")
-            fig, ax = plt.subplots(figsize=(10,3))
-            ax.plot(monthly.index, monthly['net'], label='Historical Net', marker='o')
-            ax.plot(forecast_df.index, forecast_df['forecast_net'], label='Forecast', marker='o', linestyle='--')
-            ax.set_ylabel('Amount')
-            ax.legend()
-            st.pyplot(fig)
+            expenses["Category"] = expenses["Description"].apply(categorize)
 
-            out = pd.concat([monthly[['__rev','__exp','net']], forecast_df], axis=0, sort=False)
-            st.download_button("Download forecast (CSV)", data=df_to_csv_bytes(out.reset_index().rename(columns={'index':'date'})), file_name="cashflow_forecast.csv", mime="text/csv")
-            st.success("Forecast generated. Note: simple model for prototyping.")
-    else:
-        st.info("Upload a transaction CSV/XLSX or paste CSV content to begin.")
-    st.markdown("</div>", unsafe_allow_html=True)
+            st.write("### 📊 Categorized Expenses")
+            st.dataframe(expenses)
 
-# ---------- Agent: Invoice Processor ----------
-elif agent == "Invoice Processor":
-    st.markdown('<div class="agent-title">📄 Invoice Processor</div>', unsafe_allow_html=True)
-    st.markdown('<div class="agent-sub">Upload invoice CSVs to extract totals, due dates, vendor summary and aging analysis.</div>', unsafe_allow_html=True)
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-
-    uploaded = st.file_uploader("Upload invoices CSV/XLSX (InvoiceID, Vendor, Date, DueDate, Amount, Status)", type=["csv","xlsx"], key="invoice_upload")
-    pasted = st.text_area("Or paste invoice CSV text (optional)", height=160)
-
-    df = None
-    if uploaded is not None:
-        try:
-            df = read_csv_or_excel(uploaded)
-        except Exception as e:
-            st.error(f"Could not read file: {e}")
-    elif pasted.strip():
-        try:
-            df = pd.read_csv(io.StringIO(pasted))
-        except Exception as e:
-            st.error(f"Could not parse pasted CSV: {e}")
-
-    if df is not None:
-        st.subheader("Preview")
-        st.dataframe(df.head(12))
-        amount_col = next((c for c in df.columns if c.lower() in ['amount','amt','total','invoice_amount']), None)
-        due_col = next((c for c in df.columns if c.lower() in ['duedate','due_date','due']), None)
-        status_col = next((c for c in df.columns if c.lower() == 'status'), None)
-
-        df['__amount'] = pd.to_numeric(df[amount_col], errors='coerce').fillna(0) if amount_col else 0
-        if due_col:
-            df['__due'] = pd.to_datetime(df[due_col], errors='coerce')
-        else:
-            df['__due'] = pd.NaT
-        today = pd.Timestamp.today().normalize()
-        df['__days_past_due'] = (today - df['__due']).dt.days
-
-        def age_bucket(days):
-            if pd.isna(days): return 'No due date'
-            if days <= 0: return 'Current'
-            if days <= 30: return '1-30'
-            if days <= 60: return '31-60'
-            if days <= 90: return '61-90'
-            return '90+'
-        df['aging_bucket'] = df['__days_past_due'].apply(age_bucket)
-
-        st.markdown("### Invoice Summary")
-        if status_col:
-            try:
-                outstanding = df[~df[status_col].astype(str).str.lower().isin(['paid','paid '])]['__amount'].sum()
-            except Exception:
-                outstanding = df['__amount'].sum()
-        else:
-            outstanding = df['__amount'].sum()
-        st.write(f"Total outstanding (approx): {outstanding:,.2f}")
-
-        st.markdown("### Aging distribution")
-        ag = df.groupby('aging_bucket')['__amount'].sum().reindex(['Current','1-30','31-60','61-90','90+','No due date']).fillna(0)
-        fig, ax = plt.subplots(figsize=(6,3))
-        ag.plot(kind='bar', ax=ax)
-        ax.set_ylabel('Amount')
-        st.pyplot(fig)
-
-        try:
-            st.dataframe(df.rename(columns={'__amount':'Amount'}).head(20))
-        except Exception:
-            st.dataframe(df.head(20))
-        st.download_button("Download invoice summary (CSV)", data=df_to_csv_bytes(df), file_name="invoice_summary.csv", mime="text/csv")
-    else:
-        st.info("Upload or paste invoices CSV/XLSX to analyze.")
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# ---------- Agent: Expense Categorization ----------
-elif agent == "Expense Categorization":
-    st.markdown('<div class="agent-title">🗂️ Expense Categorization</div>', unsafe_allow_html=True)
-    st.markdown('<div class="agent-sub">Upload expenses; auto-classify into categories (Travel, Utilities, Salaries, Marketing, Office, Software, Other).</div>', unsafe_allow_html=True)
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-
-    uploaded = st.file_uploader("Upload expense CSV/XLSX (Date, Description, Amount)", type=["csv","xlsx"], key="expense_upload")
-    pasted = st.text_area("Or paste expense CSV text (optional)", height=160)
-
-    df = None
-    if uploaded is not None:
-        try:
-            df = read_csv_or_excel(uploaded)
-        except Exception as e:
-            st.error(f"Could not read file: {e}")
-    elif pasted.strip():
-        try:
-            df = pd.read_csv(io.StringIO(pasted))
-        except Exception as e:
-            st.error(f"Could not parse pasted CSV: {e}")
-
-    if df is not None:
-        st.subheader("Preview")
-        st.dataframe(df.head(12))
-
-        desc_col = next((c for c in df.columns if c.lower() in ['description','desc','note','details']), None)
-        if desc_col is None:
-            desc_col = df.columns[1] if len(df.columns) > 1 else df.columns[0]
-        amt_col = next((c for c in df.columns if c.lower() in ['amount','amt','value','expense']), df.columns[-1])
-
-        def simple_category(desc):
-            d = str(desc).lower()
-            if any(k in d for k in ['flight','hotel','uber','taxi','travel','airline','conference']):
-                return 'Travel'
-            if any(k in d for k in ['salary','payroll','wage','payroll']):
-                return 'Salaries'
-            if any(k in d for k in ['electric','utility','water','gas','utilities','electricity','bill']):
-                return 'Utilities'
-            if any(k in d for k in ['ads','google','facebook','campaign','marketing','seo','ad']):
-                return 'Marketing'
-            if any(k in d for k in ['office','stationery','supplies','ink','paper','stationery']):
-                return 'Office'
-            if any(k in d for k in ['software','saas','subscription','license','app']):
-                return 'Software'
-            return 'Other'
-
-        df['__amount'] = pd.to_numeric(df[amt_col], errors='coerce').fillna(0)
-        df['category'] = df[desc_col].apply(simple_category)
-
-        st.markdown("### Categorized Preview")
-        st.dataframe(df[[desc_col, amt_col, 'category']].rename(columns={desc_col:'Description', amt_col:'Amount'}).head(30))
-
-        agg = df.groupby('category')['__amount'].sum().sort_values(ascending=False)
-        st.markdown("### Spending by Category")
-        fig, ax = plt.subplots(figsize=(6,3))
-        agg.plot(kind='bar', ax=ax)
-        ax.set_ylabel('Amount')
-        st.pyplot(fig)
-
-        st.download_button("Download categorized expenses (CSV)", data=df_to_csv_bytes(df), file_name="expenses_categorized.csv", mime="text/csv")
-        st.success("Expense categorization complete. Heuristics are sample rules — review & refine for production use.")
-    else:
-        st.info("Upload or paste expense CSV/XLSX to begin categorization.")
-    st.markdown("</div>", unsafe_allow_html=True)
+            st.download_button("⬇️ Download Categorized Expenses", expenses.to_csv(index=False).encode("utf-8"), "categorized_expenses.csv")                   
