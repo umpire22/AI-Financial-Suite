@@ -19,49 +19,93 @@ except Exception:
 # ---------- Page config ----------
 st.set_page_config(page_title="AI Financial Suite", layout="wide", initial_sidebar_state="expanded")
 
-# ---------- Global styling (match IT Troubleshooting Suite look) ----------
+# ---------- Global styling (match requested header + IT Troubleshooting look) ----------
 st.markdown(
     """
     <style>
+    /* Full app dark background */
     .reportview-container, .main, header, .stApp {
-        background-color: #0b1220;
+        background-color: #071024; /* very dark navy */
         color: #e6eef8;
     }
+
+    /* Card style */
     .card {
-        background: #071029;
+        background: #071229;
         padding: 18px;
         border-radius: 12px;
         margin-bottom: 18px;
         border: 1px solid rgba(255,255,255,0.03);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.45);
     }
-    .header-title { font-size:34px; font-weight:800; color:#7dd3fc; margin:0; }
-    .header-sub { font-size:14px; color:#fbbf24; margin:0; }
+
+    /* header matching your screenshot */
+    .dashboard-header {
+        text-align: center;
+        padding: 36px 10px;
+        border-radius: 8px;
+        background: transparent;
+        margin-bottom: 8px;
+    }
+    .dashboard-title {
+        color: #40bfff; /* cyan, similar to example */
+        font-weight: 900;
+        font-size: 48px;
+        margin: 0;
+        line-height: 1;
+        letter-spacing: 0.5px;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+    .dashboard-sub {
+        color: #f5c542; /* gold/amber */
+        font-weight: 700;
+        font-size: 26px;
+        margin: 8px 0 0 0;
+        line-height: 1.1;
+    }
+    .header-divider {
+        height: 2px;
+        background-color: rgba(255,255,255,0.04);
+        margin: 22px auto 20px auto;
+        width: 90%;
+    }
+
+    /* Agent headings */
     .agent-title { font-size:22px; font-weight:800; color:#93c5fd; margin-bottom:4px; }
     .agent-sub { font-size:14px; color:#fbcfe8; margin-bottom:10px; }
+
+    /* Inputs & buttons */
     .stButton>button { background-image: linear-gradient(90deg,#06b6d4,#7c3aed); color:white; font-weight:700; border-radius:8px; }
     .stTextInput>div>div>input, .stTextArea>div>div>textarea, .stSelectbox>div>div {
         background-color:#051226; color:#e6eef8; border-radius:6px; padding:8px;
     }
+
+    /* Dataframe text color */
+    .stDataFrame th { color: #e6eef8; }
+    .stDataFrame td { color: #e6eef8; }
+
+    /* Small muted helper text */
     .small-muted { color:#9ca3af; font-size:12px; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ---------- Header ----------
+# ---------- Header: match the screenshot exactly ----------
 try:
     logo = Image.open("logo.png")
-    st.image(logo, width=100)
+    st.image(logo, width=90)
 except Exception:
+    # safe fallback, no crash
     pass
 
 st.markdown(
     """
-    <div style="text-align:center; padding:20px; border-radius:10px;
-                background: linear-gradient(90deg, #0ea5e9, #6366f1);
-                box-shadow: 0 6px 18px rgba(0,0,0,0.45); margin-bottom:16px;">
-      <h1 class="header-title">💰 AI Financial Suite</h1>
-      <p class="header-sub">Accounts Reconciliation • Cash Flow Forecasting • Invoice Processing • Expense Categorization</p>
+    <div class="dashboard-header">
+      <div style="height:16px"></div>
+      <h1 class="dashboard-title">AI Business Operations Suite</h1>
+      <h2 class="dashboard-sub">Your 4-in-1 AI Assistant for Smarter Workflows</h2>
+      <div class="header-divider"></div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -80,7 +124,7 @@ agent = st.sidebar.selectbox(
     ],
 )
 st.sidebar.markdown("---")
-st.sidebar.info("Upload sample CSV/XLSX files or paste text. This app is a demo — secure production data appropriately.")
+st.sidebar.info("Upload CSV/XLSX files or paste data. This is a demo — secure production data appropriately.")
 
 # ---------- Helpers ----------
 def df_to_csv_bytes(df: pd.DataFrame) -> bytes:
@@ -162,12 +206,10 @@ if agent == "Accounts Reconciliation":
                         b['__amt'] = pd.to_numeric(b[bank_amt_col], errors='coerce').round(2)
                         l['__amt'] = pd.to_numeric(l[ledger_amt_col], errors='coerce').round(2)
 
-                        # direct equality match
                         merged = pd.merge(b, l, on='__amt', how='left', suffixes=('_bank','_ledger'), indicator=True)
                         direct_matched = merged[merged['_merge']=='both']
                         unmatched_bank = merged[merged['_merge']=='left_only']
 
-                        # fuzzy tolerant matches
                         tolerant_matches = []
                         if not unmatched_bank.empty:
                             for _, row in unmatched_bank.iterrows():
@@ -245,7 +287,6 @@ elif agent == "Cash Flow Forecasting":
             st.markdown("### Historical (monthly)")
             st.dataframe(monthly.tail(12))
 
-            # simple forecasting (rolling mean + trend)
             window = 3
             monthly['net_ma'] = monthly['net'].rolling(window=window, min_periods=1).mean()
             last_ma = monthly['net_ma'].iloc[-1] if not monthly['net_ma'].empty else 0.0
@@ -264,7 +305,6 @@ elif agent == "Cash Flow Forecasting":
             future_idx = pd.date_range(start=monthly.index[-1] + pd.offsets.MonthBegin(1), periods=int(horizon), freq='M')
             forecast_df = pd.DataFrame({'forecast_net': forecast_values}, index=future_idx)
 
-            # Plot
             st.markdown("### Forecast (net cash)")
             fig, ax = plt.subplots(figsize=(10,3))
             ax.plot(monthly.index, monthly['net'], label='Historical Net', marker='o')
@@ -342,8 +382,6 @@ elif agent == "Invoice Processor":
         ax.set_ylabel('Amount')
         st.pyplot(fig)
 
-        display_cols = [c for c in ['InvoiceID','Vendor','__amount','aging_bucket','__due'] if c in df.columns or c.startswith('__')]
-        # show more robust subset
         try:
             st.dataframe(df.rename(columns={'__amount':'Amount'}).head(20))
         except Exception:
@@ -378,10 +416,8 @@ elif agent == "Expense Categorization":
         st.subheader("Preview")
         st.dataframe(df.head(12))
 
-        # detect description & amount columns
         desc_col = next((c for c in df.columns if c.lower() in ['description','desc','note','details']), None)
         if desc_col is None:
-            # fallback to second column or first
             desc_col = df.columns[1] if len(df.columns) > 1 else df.columns[0]
         amt_col = next((c for c in df.columns if c.lower() in ['amount','amt','value','expense']), df.columns[-1])
 
@@ -415,7 +451,7 @@ elif agent == "Expense Categorization":
         st.pyplot(fig)
 
         st.download_button("Download categorized expenses (CSV)", data=df_to_csv_bytes(df), file_name="expenses_categorized.csv", mime="text/csv")
-        st.success("Expense categorization complete. Heuristics are sample rules — review and refine for production use.")
+        st.success("Expense categorization complete. Heuristics are sample rules — review & refine for production use.")
     else:
         st.info("Upload or paste expense CSV/XLSX to begin categorization.")
     st.markdown("</div>", unsafe_allow_html=True)
