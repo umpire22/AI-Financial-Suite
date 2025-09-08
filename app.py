@@ -15,16 +15,22 @@ st.markdown(
     <style>
         .main {
             background-color: #0e1117;
-            color: white;
+            color: #ffffff;
         }
         h1 {
             color: #00BFFF;
             font-weight: bold;
             text-align: center;
+            font-size: 2.5em;
         }
-        h2, h3 {
+        h2 {
             color: #FFD700;
             text-align: center;
+            font-size: 1.5em;
+        }
+        h3 {
+            color: #FF69B4;
+            font-size: 1.2em;
         }
         .stButton>button {
             background-color: #00BFFF;
@@ -32,6 +38,11 @@ st.markdown(
             font-weight: bold;
             border-radius: 10px;
             padding: 0.6em 1.2em;
+            transition: 0.3s;
+        }
+        .stButton>button:hover {
+            background-color: #1E90FF;
+            transform: scale(1.05);
         }
         .stDownloadButton>button {
             background-color: #32CD32;
@@ -39,6 +50,14 @@ st.markdown(
             font-weight: bold;
             border-radius: 10px;
             padding: 0.6em 1.2em;
+            transition: 0.3s;
+        }
+        .stDownloadButton>button:hover {
+            background-color: #228B22;
+            transform: scale(1.05);
+        }
+        .css-1d391kg {
+            background: linear-gradient(180deg, #001F3F, #001122);
         }
     </style>
     """,
@@ -48,7 +67,7 @@ st.markdown(
 # =========================
 # Dashboard Header
 # =========================
-st.markdown("<h1>AI Financial Suite</h1>", unsafe_allow_html=True)
+st.markdown("<h1>💰 AI Financial Suite</h1>", unsafe_allow_html=True)
 st.markdown("<h2>Your 4-in-1 AI Assistant for Smarter Workflows</h2>", unsafe_allow_html=True)
 st.markdown("---")
 
@@ -65,8 +84,8 @@ menu = st.sidebar.radio(
 # 1. Accounts Reconciliation
 # =========================
 if menu == "Accounts Reconciliation":
-    st.subheader("Accounts Reconciliation")
-    st.write("Upload two CSV files (Bank Statement & Internal Records) to reconcile transactions.")
+    st.markdown("<h3>📑 Accounts Reconciliation</h3>", unsafe_allow_html=True)
+    st.write("Upload two CSV files (**Bank Statement** & **Internal Records**) to reconcile transactions automatically.")
 
     bank_file = st.file_uploader("Upload Bank Statement", type=["csv"], key="bank")
     internal_file = st.file_uploader("Upload Internal Records", type=["csv"], key="internal")
@@ -75,10 +94,10 @@ if menu == "Accounts Reconciliation":
         bank_df = pd.read_csv(bank_file)
         internal_df = pd.read_csv(internal_file)
 
-        st.write("### Bank Statement")
+        st.write("### 📘 Bank Statement")
         st.dataframe(bank_df)
 
-        st.write("### Internal Records")
+        st.write("### 📗 Internal Records")
         st.dataframe(internal_df)
 
         unmatched = pd.concat([bank_df, internal_df]).drop_duplicates(keep=False)
@@ -92,22 +111,22 @@ if menu == "Accounts Reconciliation":
 # 2. Cash Flow Forecasting
 # =========================
 elif menu == "Cash Flow Forecasting":
-    st.subheader("Cash Flow Forecasting")
-    st.write("Upload past transactions to forecast cash flow for the next 6 months.")
+    st.markdown("<h3>📈 Cash Flow Forecasting</h3>", unsafe_allow_html=True)
+    st.write("Upload past transactions to **forecast your cash flow** for the next 6 months.")
 
     file = st.file_uploader("Upload Transactions CSV", type=["csv"], key="cashflow")
 
     if file:
         df = pd.read_csv(file)
 
-        st.write("### Uploaded Data")
+        st.write("### 📘 Uploaded Data")
         st.dataframe(df)
 
         if "Amount" in df.columns:
             monthly_cashflow = df.groupby(df.index // 30)["Amount"].sum()
             forecast = monthly_cashflow.rolling(3).mean().shift(1).fillna(method="bfill")
 
-            st.write("### 📈 6-Month Forecast")
+            st.write("### 🔮 6-Month Forecast")
             forecast_df = pd.DataFrame({
                 "Month": np.arange(1, len(forecast) + 1),
                 "Forecasted Cash Flow": forecast.values
@@ -120,14 +139,14 @@ elif menu == "Cash Flow Forecasting":
 # 3. Invoice Processing
 # =========================
 elif menu == "Invoice Processing":
-    st.subheader("Invoice Processing")
-    st.write("Upload invoices CSV file to extract and organize payment details.")
+    st.markdown("<h3>🧾 Invoice Processing</h3>", unsafe_allow_html=True)
+    st.write("Upload **invoices CSV file** to extract and organize payment details automatically.")
 
     file = st.file_uploader("Upload Invoices CSV", type=["csv"], key="invoice")
 
     if file:
         invoices = pd.read_csv(file)
-        st.write("### Uploaded Invoices")
+        st.write("### 📘 Uploaded Invoices")
         st.dataframe(invoices)
 
         if {"Invoice ID", "Amount", "Status"}.issubset(invoices.columns):
@@ -142,14 +161,14 @@ elif menu == "Invoice Processing":
 # 4. Expense Categorization
 # =========================
 elif menu == "Expense Categorization":
-    st.subheader("Expense Categorization")
-    st.write("Upload expenses CSV file and categorize spending.")
+    st.markdown("<h3>💳 Expense Categorization</h3>", unsafe_allow_html=True)
+    st.write("Upload **expenses CSV file** and categorize your spending into smart buckets.")
 
     file = st.file_uploader("Upload Expenses CSV", type=["csv"], key="expenses")
 
     if file:
         expenses = pd.read_csv(file)
-        st.write("### Uploaded Expenses")
+        st.write("### 📘 Uploaded Expenses")
         st.dataframe(expenses)
 
         if "Description" in expenses.columns and "Amount" in expenses.columns:
@@ -171,4 +190,4 @@ elif menu == "Expense Categorization":
             st.write("### 📊 Categorized Expenses")
             st.dataframe(expenses)
 
-            st.download_button("⬇️ Download Categorized Expenses", expenses.to_csv(index=False).encode("utf-8"), "categorized_expenses.csv")                   
+            st.download_button("⬇️ Download Categorized Expenses", expenses.to_csv(index=False).encode("utf-8"), "categorized_expenses.csv")
